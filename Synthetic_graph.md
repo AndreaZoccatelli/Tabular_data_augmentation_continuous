@@ -33,4 +33,4 @@ train_a %>% ggplot()+
   theme_minimal()
 ```
 
-![](Synthetic_graph_files/figure-gfm/unnamed-chunk-3-1.png)<!-- -->
+![](Graph/unnamed-chunk-3-1.png)<!-- -->
