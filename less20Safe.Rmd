@@ -2,7 +2,7 @@
 title: "less20Safe"
 author: "Andrea Zoccatelli"
 date: "2023-05-28"
-output: html_document
+output: rmarkdown::github_document
 ---
 
 ```{r setup, include=FALSE, echo=TRUE}
