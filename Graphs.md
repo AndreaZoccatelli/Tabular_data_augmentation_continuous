@@ -19,7 +19,7 @@ Best %>% ggplot()+
   theme_minimal()
 ```
 
-![](Graphs_files/figure-gfm/BestCase-1.png)<!-- -->
+![](Graphs/BestCase-1.png)<!-- -->
 
 ``` r
 twth = read.csv("20_30Safe.csv")
@@ -47,7 +47,7 @@ ltw %>% ggplot()+
   theme_minimal()
 ```
 
-![](Graphs_files/figure-gfm/less20Safe-1.png)<!-- -->
+![](Graphs/less20Safe-1.png)<!-- -->
 
 ``` r
 tpc = read.csv("10perc_minority.csv")
@@ -61,7 +61,7 @@ tpc %>% ggplot()+
   theme_minimal()
 ```
 
-![](Graphs_files/figure-gfm/10perc_minority-1.png)<!-- -->
+![](Graphs/10perc_minority-1.png)<!-- -->
 
 ``` r
 fpc = read.csv("5perc_minority.csv")
@@ -75,7 +75,7 @@ fpc %>% ggplot()+
   theme_minimal()
 ```
 
-![](Graphs_files/figure-gfm/5perc_minority-1.png)<!-- -->
+![](Graphs/5perc_minority-1.png)<!-- -->
 
 ``` r
 r = read.csv("default.csv")
@@ -89,4 +89,4 @@ r %>% ggplot()+
   theme_minimal()
 ```
 
-![](Graphs_files/figure-gfm/default-1.png)<!-- -->
+![](Graphs/default-1.png)<!-- -->
