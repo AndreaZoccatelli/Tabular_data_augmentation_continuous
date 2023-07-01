@@ -1,0 +1,175 @@
+---
+title: "less20Safe"
+author: "Andrea Zoccatelli"
+date: "2023-05-28"
+output: html_document
+---
+
+```{r setup, include=FALSE, echo=TRUE}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE)
+
+library(GenCopula)
+library(stargazer)
+```
+
+```{r path, include=FALSE, echo=TRUE}
+knitr::opts_chunk$set(warning = FALSE)
+
+sel_path = "D:/unibg/APP"
+models = c("Logistic", "RandForest", "XGBoost")
+sel_filename = "less20Safe.csv"
+data = read.csv(paste0(sel_path,'/', sel_filename))
+
+data %>% ggplot()+
+  geom_point(aes(feature.1, feature.2, colour = factor(y)))+
+  xlab('feature 1')+
+  ylab('feature 2')+
+  labs(color='Class')+
+  theme_minimal()
+```
+
+## Augmentation share tuning
+
+```{r tuning, echo=TRUE}
+knitr::opts_chunk$set(warning = FALSE)
+
+DB = import_strat_split(sel_path, sel_filename)
+id = stratify(DB@train_set)
+minority = extract_minority(DB@train_set)
+index = best_copula(dplyr::select(DB@train_set, -c(id,y)))
+
+Database = c()
+shares = c(0.2, 0.4, 0.6, 0.8, 1)
+
+for (k in 1:length(shares)){
+  name = paste0("share_",shares[k])
+  table = pipeline(train = DB@train_set, id = id, models = models, share = k, best_copula_i = index[1], outliers_r = 1, nearest = 1)
+  assign(name, table)
+  Database[k] = name
+  print(paste0(shares[k]*100, "% done"))
+}
+
+augmented_results = bind_rows(
+  get(Database[1])@reg_summary[which.max(get(Database[1])@reg_summary$F1_avg),],
+  get(Database[1])@aug_summary[which.max(get(Database[1])@aug_summary$F1_avg),],
+  get(Database[2])@aug_summary[which.max(get(Database[2])@aug_summary$F1_avg),],
+  get(Database[3])@aug_summary[which.max(get(Database[3])@aug_summary$F1_avg),],
+  get(Database[4])@aug_summary[which.max(get(Database[4])@aug_summary$F1_avg),],
+  get(Database[5])@aug_summary[which.max(get(Database[5])@aug_summary$F1_avg),]
+)
+
+best_s = shares[which.max(augmented_results[-1,]$F1_avg)]
+
+augmented_results = augmented_results %>%
+  mutate(Tuning = c('0', '0.2', '0.4', '0.6', '0.8', '1'), Dataset = "Less 20% safe") %>%
+  rename(Model = models)
+
+augmented_results
+```
+
+```{r latex1, echo=TRUE}
+#stargazer(augmented_results, summary = F, rownames = F) for latex output
+```
+
+## Training set
+```{r train, echo=TRUE}
+knitr::opts_chunk$set(warning = FALSE)
+
+train = DB@train_set
+#train %>% write.csv('less20Safe_t.csv') export for augmentation with cGAN
+```
+
+## Evaluation on test set
+### Regular
+```{r regular, echo=TRUE}
+knitr::opts_chunk$set(warning = FALSE)
+
+F1_reg = c()
+Precision_reg = c()
+Recall_reg = c()
+
+for (k in 1:length(models)){
+  model_reg = select_fit_model(train, m = models[k])
+  pred_reg = predictions(m = models[k], model_reg, test_set = DB@test_set)
+  F1_reg[k] = round(F1_score(DB@test_set$y, pred_reg),3)
+  Precision_reg[k] = round(Precision(DB@test_set$y, pred_reg),3)
+  Recall_reg[k] = round(Recall(DB@test_set$y, pred_reg),3)
+}
+
+reg_scores = tibble(Model = models, F1 = F1_reg, Precision = Precision_reg,
+                    Recall = Recall_reg, Obs. = "Regular", Dataset = "Less 20% safe")
+reg_scores
+```
+
+```{r latex2, echo=TRUE}
+#stargazer(reg_scores, summary = F, rownames = F) for latex output
+```
+
+### Copula Augmented
+```{r copula, echo=TRUE}
+knitr::opts_chunk$set(warning = FALSE)
+
+train_a = augment(train = DB@train_set, best_copula_i = index[1], minority = minority, share = best_s, outliers_r = 1, nearest = 1)
+
+F1_aug = c()
+Precision_aug = c()
+Recall_aug = c()
+
+for (k in 1:length(models)){
+  model_aug = select_fit_model(train_a, m = models[k])
+  pred_aug = predictions(m = models[k], model_aug, test_set = DB@test_set)
+  F1_aug[k] = round(F1_score(DB@test_set$y, pred_aug),3)
+  Precision_aug[k] = round(Precision(DB@test_set$y, pred_aug),3)
+  Recall_aug[k] = round(Recall(DB@test_set$y, pred_aug),3)
+}
+
+aug_scores = tibble(Model = models, F1 = F1_aug, Precision = Precision_aug,
+                    Recall = Recall_aug, Obs. = "Augmented", Dataset = "Less 20% safe")
+aug_scores
+```
+
+```{r latex3, echo=TRUE}
+knitr::opts_chunk$set(warning = FALSE)
+
+#stargazer(aug_scores, summary = F, rownames = F) 
+```
+
+### cGAN Augmented
+```{r copula, echo=TRUE}
+train_GAN = read.csv("D:\\unibg\\APP\\Train_sets\\less20Safe_a.csv")
+minority = train_GAN %>% filter(y == 1 & type == 'positive') %>% dplyr::select(-c(y,id,type))
+synthetic = train_GAN %>% filter(type == 'synthetic') %>% dplyr::select(-c(y,id,type))
+synthetic = nearest(minority = minority, generated = synthetic) %>%
+  outliers_rmv() %>%
+  mutate(type = "synthetic", y = 1)
+minority = minority %>% mutate(type = "positive", y = 1)
+negatives = train_GAN %>% filter(y == 0)
+new_train_GAN = bind_rows(negatives, minority, synthetic)
+
+train_GAN = train_GAN %>% dplyr::select(-type) %>% as_tibble()
+
+new_train_GAN = new_train_GAN %>% dplyr::select(-type)
+new_train_GAN$feature.1 = new_train_GAN$feature.1 %>% as.matrix() #the columns of test set are matrices, due to scale function
+new_train_GAN$feature.2 = new_train_GAN$feature.2 %>% as.matrix()
+F1_GAN = c()
+Precision_GAN = c()
+Recall_GAN = c()
+for (k in 1:length(models)){
+  model_GAN = select_fit_model(new_train_GAN, m = models[k])
+  pred_GAN = predictions(m = models[k], model_GAN, test_set = DB@test_set)
+  F1_GAN[k] = round(F1_score(DB@test_set$y, pred_GAN),3)
+  Precision_GAN[k] = round(Precision(DB@test_set$y, pred_GAN),3)
+  Recall_GAN[k] = round(Recall(DB@test_set$y, pred_GAN),3)
+}
+
+GAN_scores = tibble(Model = models, F1 = F1_GAN, Precision = Precision_GAN,
+                    Recall = Recall_GAN, Obs. = "augmented", Dataset = "Best case")
+
+GAN_scores
+```
+
+```{r latex3, echo=TRUE}
+knitr::opts_chunk$set(warning = FALSE)
+
+stargazer(GAN_scores, summary = F, rownames = F)
+```
