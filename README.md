@@ -1,6 +1,6 @@
 # Augmentation of tabular data with continuous features for binary imbalanced classification problems
 
-The aim of this project is to augment the observations that belong to the minority class using copula sampling and conditional GANs.
+The aim of this project is to augment the observations that belong to the minority class using copula sampling and conditional GANs in order to improve the performance of the classifiers for binary imbalanced classification problems.
 
 - The library used for the augmentation using copulas is <a href="https://github.com/AndreaZoccatelli/GenCopula" target="_blank">GenCopula</a>
 ``` r
