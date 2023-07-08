@@ -33,7 +33,7 @@ twth %>% ggplot()+
   theme_minimal()
 ```
 
-![](Graphs_files/figure-gfm/20_30Safe-1.png)<!-- -->
+![](Graphs/20_30Safe-1.png)<!-- -->
 
 ``` r
 ltw = read.csv("less20Safe.csv")
